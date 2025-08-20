@@ -223,3 +223,59 @@
     )
   )
 )
+
+;; READ-ONLY INTERFACES
+
+(define-read-only (get-market (market-id uint))
+  (map-get? markets market-id)
+)
+
+(define-read-only (get-user-prediction
+    (market-id uint)
+    (user principal)
+  )
+  (map-get? user-predictions {
+    market-id: market-id,
+    user: user,
+  })
+)
+
+(define-read-only (get-contract-balance)
+  (stx-get-balance (as-contract tx-sender))
+)
+
+;; GOVERNANCE FUNCTIONS
+
+(define-public (set-oracle-address (new-address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
+    (ok (var-set oracle-address new-address))
+  )
+)
+
+(define-public (set-minimum-stake (new-minimum uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
+    (asserts! (> new-minimum u0) ERR_INVALID_PARAMETER)
+    (ok (var-set minimum-stake new-minimum))
+  )
+)
+
+(define-public (set-fee-percentage (new-fee uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
+    (asserts! (<= new-fee u100) ERR_INVALID_PARAMETER)
+    (ok (var-set fee-percentage new-fee))
+  )
+)
+
+(define-public (withdraw-fees (amount uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
+    (asserts! (<= amount (stx-get-balance (as-contract tx-sender)))
+      ERR_INSUFFICIENT_BALANCE
+    )
+    (try! (as-contract (stx-transfer? amount (as-contract tx-sender) CONTRACT_OWNER)))
+    (ok amount)
+  )
+)
